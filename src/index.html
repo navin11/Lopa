@@ -1,0 +1,161 @@
+<html>
+
+<head>
+	<link rel="stylesheet" href="style.css" type="text/css">
+</head>
+
+<body>
+	<div id="lopa1"></div>
+	<div id="lopa2"></div>
+
+	<script src="./lopa.min.js" type="text/javascript"></script>
+
+    <script type="text/javascript">
+
+window.onload = function () {
+
+const config = {
+  "deckConfig": [
+    {
+      "deckName": "UpperDeck",
+      "deckType": 2,
+      "cabinClassConfig": [
+        {
+          "cabinClass": "UpperEconomy",
+          "cabinClassName": "UE",
+          "seatType": "small",
+          "seatConfig": "2-4-2",
+          "cabinClassOrder": 4,
+          "seatLetters": "ABDEFGJK",
+          "startRow": 25,
+          "endRow": 32,
+          "noSeats": [
+            "29A",
+            "29B",
+            "29J",
+            "29K",
+            "32A",
+            "32B",
+            "32J",
+            "32K"
+          ]
+        },
+        {
+          "cabinClass": "First",
+          "cabinClassName": "",
+          "seatType": "large",
+          "seatConfig": "1-2-1",
+          "cabinClassOrder": 1,
+          "seatLetters": "AEFK",
+          "startRow": 1,
+          "endRow": 2,
+          "noSeats": []
+        },
+        {
+          "cabinClass": "Business",
+          "cabinClassName": "B",
+          "seatType": "large",
+          "seatConfig": "1-2-1",
+          "cabinClassOrder": 2,
+          "seatLetters": "AEFK",
+          "startRow": 10,
+          "endRow": 22,
+          "noSeats": [
+            "13A",
+            "13E",
+            "13F",
+            "13K"
+          ]
+        }
+      ]
+    },
+    {
+      "deckName": "MainDeck",
+      "deckType": 1,
+      "cabinClassConfig": [
+        {
+          "cabinClass": "MainEconomy",
+          "cabinClassName": "ME",
+          "seatType": "small",
+          "seatConfig": "3-4-3",
+          "cabinClassOrder": 1,
+          "seatLetters": "ABCDEFGHJK",
+          "startRow": 40,
+          "endRow": 83,
+          "noSeats": [
+            "40D",
+            "40E",
+            "40F",
+            "40G",
+            "41D",
+            "41E",
+            "41F",
+            "41G",
+            "42D",
+            "42E",
+            "42F",
+            "42G",
+            "49D",
+            "49E",
+            "49F",
+            "49G",
+            "62D",
+            "62E",
+            "62F",
+            "62G",
+            "67D",
+            "74A",
+            "74B",
+            "74C",
+            "74H",
+            "74J",
+            "74K",
+            "75D",
+            "75E",
+            "75F",
+            "75G",
+            "76D",
+            "76E",
+            "76F",
+            "76G"
+          ]
+        }
+      ]
+    }
+  ],
+  "lavatoriesAndGalleys": null,
+  "data": [
+    {
+      "seat": "58D",
+      "value": 2,
+      "tooltip": "<div class=\"font-weight-bold p-1\">Seat 58D</div>\n                  <div class=\"p-1\">\n                    <span class=\"circle circle-success\"></span> SVDU Resets: <span class=\"font-weight-bold\">0</span>\n                  </div>\n                  <div class=\"p-1\">\n                    <span class=\"circle circle-warning\"></span> TPMU Resets: <span class=\"font-weight-bold\">2</span>\n                  </div>"
+    },
+    {
+      "seat": "76H",
+      "value": 3,
+      "tooltip": "<div class=\"font-weight-bold p-1\">Seat 76H</div>\n                  <div class=\"p-1\">\n                    <span class=\"circle circle-warning\"></span> SVDU Resets: <span class=\"font-weight-bold\">1</span>\n                  </div>\n                  <div class=\"p-1\">\n                    <span class=\"circle circle-warning\"></span> TPMU Resets: <span class=\"font-weight-bold\">2</span>\n                  </div>"
+    }
+  ]
+}
+
+
+const options = {
+				"displayDeckName": false,
+				"displayCabinClassName": false, 
+				"onMouseOver": function (seat) {
+					l1.highlight(seat);
+				},
+				"onSelect": function (seat) {
+					// l1.select(seat);
+          console.log(seat);
+				}
+			};
+
+        const selector = document.getElementById('lopa1');
+
+        var l1 = new Lopa(selector, config, options);
+    }
+ </script>
+</body>
+
+</html>
