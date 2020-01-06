@@ -7,14 +7,21 @@ export default class Lopa {
         this.container = container;
         this.config = config;
         this.options = options;
+        this.orientation = options.displayOrientation ? options.displayOrientation : '';
         this.initialize();
     }
 
     findXPos(seatData) {
         const seatNo = parseInt(seatData.value);
-        if (seatNo > 0 && seatNo < 10) return 8;
-        else if (seatNo >= 10 && seatNo < 100) return 5;
-        else return 2;
+        if (this.orientation && this.orientation !== 'vertical') {
+            if (seatNo > 0 && seatNo < 10) return 8;
+            else if (seatNo >= 10 && seatNo < 100) return 5;
+            else return 2;
+        } else {
+            if (seatNo > 0 && seatNo < 10) return 2;
+            else if (seatNo >= 10 && seatNo < 100) return -1;
+            else return -3;
+        }
     }
 
     findYPos(seatData) {
@@ -55,9 +62,28 @@ export default class Lopa {
         return padding;
     }
 
-    roundedPath(x, y, width, height, radius) {
-        return `M${x}, ${y}h${width - radius}a${radius}, ${radius} 0 0 1 ${radius}, ${radius} 
-        v${height - 2 * radius} a${radius}, ${radius} 0 0 1 ${-radius}, ${radius}h${radius - width}z`;
+    roundedPath(x, y, w, h) {
+        let r = 7, tl, tr = true, bl = false, br = true;
+        if (this.orientation && this.orientation === 'vertical') {
+            bl = true;
+            tr = false;
+        }
+        var retval;
+        retval  = "M" + (x + r) + "," + y;
+        retval += "h" + (w - 2*r);
+        if (tr) { retval += "a" + r + "," + r + " 0 0 1 " + r + "," + r; }
+        else { retval += "h" + r; retval += "v" + r; }
+        retval += "v" + (h - 2*r);
+        if (br) { retval += "a" + r + "," + r + " 0 0 1 " + -r + "," + r; }
+        else { retval += "v" + r; retval += "h" + -r; }
+        retval += "h" + (2*r - w);
+        if (bl) { retval += "a" + r + "," + r + " 0 0 1 " + -r + "," + -r; }
+        else { retval += "h" + -r; retval += "v" + -r; }
+        retval += "v" + (2*r - h);
+        if (tl) { retval += "a" + r + "," + r + " 0 0 1 " + r + "," + -r; }
+        else { retval += "v" + -r; retval += "h" + r; }
+        retval += "z";
+        return retval;
     }
 
     calcHeight() {
@@ -99,10 +125,13 @@ export default class Lopa {
                 .attr('style', 'font-size: 9px; fill: #c2c6c9;')
                 .attr('transform', (d, ind) => {
                     const lavIndex = this.getLaventoriesGalleries(d, lavArr);
+                    if (this.orientation && this.orientation === 'vertical') {
+                        return `translate(${_own.chartSize.width - axisPadding - (_own.cabinHeightByBay[i] + colHeight + 15)},
+                        ${scalePoint + (lavIndex * 20) + ((ind + 1) * _own.seatSize.width) })`;
+                    }
                     return `translate(${scalePoint + (lavIndex * 20) + ((ind + 1) * _own.seatSize.width) - 10}, 
-                    ${_own.chartSize.height - axisPadding - (_own.cabinHeightByBay[i] + colHeight + 5)})`;
+                        ${_own.chartSize.height - axisPadding - (_own.cabinHeightByBay[i] + colHeight + 5)})`;
                 });
-
         }
     }
 
@@ -118,11 +147,9 @@ export default class Lopa {
                         cabinheight += this.currentCabinHeight[j];
                     }
                     height = deckHeight - cabinheight;
-
                 }
             });
         }
-
         return height;
     }
 
@@ -140,11 +167,13 @@ export default class Lopa {
         return height + previousAisleHeightDifference;
     }
 
-    yAxis(alpha, seatH) {
+    yAxis(alpha, seatH, seatW) {
         const _own = this;
         const height = this.showCabinName ? this.chartSize.height - 40 : this.chartSize.height;
         const yAxis = this.svg.append('g')
             .classed('yAxis', true);
+
+        alpha = this.orientation && this.orientation === 'vertical' ? alpha.reverse() : alpha;
 
         yAxis.selectAll('text')
             .data(alpha)
@@ -152,10 +181,15 @@ export default class Lopa {
             .append('text')
             .text(d => d)
             .attr('transform', (d, index) => {
-                const cabinPositionHeight = this.alterSeatPosition(d);
-                const cabinHeight =  _own.detectCabinHeight(d);
+                const cabinPositionHeight = _own.alterSeatPosition(d);
+                const cabinHeight = _own.detectCabinHeight(d);
+                if (this.orientation && this.orientation === 'vertical') {
+                    return `translate(${this.chartSize.width + (seatW / 2) - 12 - cabinHeight - cabinPositionHeight - ((index + 1) * seatW) - _own.detectPadding(d)},
+                        ${_own.currentScalePoint - _own.padding.inner + 30})`
+                }
                 return `translate(${_own.currentScalePoint - _own.padding.inner + 22}, 
                     ${height + (seatH / 2) - 6 - cabinHeight - cabinPositionHeight - ((index + 1) * seatH) - _own.detectPadding(d)} )`
+                
             })
             .attr('style', 'font-size: 9px; fill: #c2c6c9;');
     }
@@ -208,6 +242,16 @@ export default class Lopa {
         return deckData;
     }
 
+    deckAlignmentAdjustment(sizeOption) {
+        const maxDeckHeight = Math.max.apply(Math, this.airCraftHeight.map(o => { return o[sizeOption]; }));
+        const minHeightDeck = this.airCraftHeight.find(deck => deck[sizeOption] < maxDeckHeight);
+        const sizeDifference = (maxDeckHeight - minHeightDeck[sizeOption]) / 2;
+        return {
+            sizeDifference,
+            deckName : minHeightDeck.deckName
+        }
+    }
+
     initialize() {
 
         this.deckNameW = 0;
@@ -231,7 +275,11 @@ export default class Lopa {
         this.seatSize = {
             smHeight: 28,
             lgHeight: 42,
-            width: 28
+            width: 28,
+            //
+            height: 28,
+            smWidth: 28,
+            lgWidth: 42,
         };
         this.seatLayoutConfig = {
             x: 0,
@@ -258,7 +306,12 @@ export default class Lopa {
 
         this.chartWrapper = d3.select(this.container)
             .append('div')
-            .classed('lopa-container', true);
+            .classed('lopa-container', true)
+            .attr('style', () => {
+                if (this.orientation !== 'vertical') {
+                    return `display: flex`;
+                }
+            });
 
         this.hoverHolder = this.chartWrapper
             .append('div')
@@ -278,11 +331,16 @@ export default class Lopa {
         }
 
         if (this.airCraftHeight.length > 1) {
-            const maxDeckHeight = Math.max.apply(Math, this.airCraftHeight.map(o => { return o.height; }));
-            const minHeightDeck = this.airCraftHeight.find(deck => deck.height < maxDeckHeight);
-            const heightDifference = (maxDeckHeight - minHeightDeck.height) / 2;
-            document.getElementsByClassName(`lopa-chart-${minHeightDeck.deckName}`)[0].getElementsByTagName('svg')[0]
-                .setAttribute('style', `transform: translateY(${heightDifference}px)`);
+            if (this.orientation !== 'vertical') {
+                const deckAlign = this.deckAlignmentAdjustment('height')
+                document.getElementsByClassName(`lopa-chart-${deckAlign.deckName}`)[0].getElementsByTagName('svg')[0]
+                    .setAttribute('style', `transform: translateY(${deckAlign.sizeDifference}px)`);
+            } else {
+                const deckAlign = this.deckAlignmentAdjustment('width')
+                document.getElementsByClassName(`lopa-chart-${deckAlign.deckName}`)[0].getElementsByTagName('svg')[0]
+                    .setAttribute('style', `transform: translateX(${deckAlign.sizeDifference}px)`);
+            }
+            
         }
     }
 
@@ -322,6 +380,14 @@ export default class Lopa {
         return heightArr;
     }
 
+    getSeatSize(seatType) {
+        let seatSize = seatType === 'small' ? this.seatSize.smHeight : this.seatSize.lgHeight;
+        if (this.orientation && this.orientation === 'vertical') {
+            seatSize = seatType === 'small' ? this.seatSize.smWidth : this.seatSize.lgWidth;
+        }
+        return seatSize;
+    }
+
     drawLopa(deck) {
 
         const _own = this;
@@ -358,7 +424,7 @@ export default class Lopa {
             const col = clsSeatConfig.reduce((tot, val) => tot + val);
 
             // To find deck height
-            const seatSize = classObj.seatType === 'small' ? this.seatSize.smHeight : this.seatSize.lgHeight
+            const seatSize = this.getSeatSize(classObj.seatType);
             const cabinHeight = col * seatSize;
             const deckHeightPerBay = this.findHeight(clsSeatConfig, seatSize);
             if (this.cabinHeightByBay.length) {
@@ -398,12 +464,12 @@ export default class Lopa {
 
             if (this.cabinRowNumHeight.length) {
                 clsSeatConfig.forEach((seatNo, i) => {
-                    const seatlayHgt = seatNo * (classObj.seatType === 'small' ? this.seatSize.smHeight : this.seatSize.lgHeight);
+                    const seatlayHgt = seatNo * (this.getSeatSize(classObj.seatType));
                     this.cabinRowNumHeight[i] = this.cabinRowNumHeight[i] < seatlayHgt ? seatlayHgt : this.cabinRowNumHeight[i];
                 });
             } else {
                 clsSeatConfig.forEach((seatNo, i) => {
-                    const seatlayHgt = seatNo * (classObj.seatType === 'small' ? this.seatSize.smHeight : this.seatSize.lgHeight);
+                    const seatlayHgt = seatNo * (this.getSeatSize(classObj.seatType));
                     this.cabinRowNumHeight.push(seatlayHgt);
                 });
             }
@@ -426,7 +492,7 @@ export default class Lopa {
 
             if (clsHeightConfig.columns < col) {
                 clsHeightConfig.columns = col;
-                clsHeightConfig.seatSize = classObj.seatType === 'small' ? this.seatSize.smHeight : this.seatSize.lgHeight;
+                clsHeightConfig.seatSize = this.getSeatSize(classObj.seatType);
                 this.seatLayoutConfig.y = clsSeatConfig;
             }
             this.classConfig[classObj.cabinClassOrder - 1] = classObj;
@@ -455,6 +521,12 @@ export default class Lopa {
             height: this.calcHeight()
         };
 
+        if (this.orientation && this.orientation === 'vertical') {
+            const sizeObj = Object.assign({}, this.chartSize);
+            this.chartSize.width = sizeObj.height;
+            this.chartSize.height = sizeObj.width;
+        }
+
         const lopaChart = this.chartWrapper
             .append('div')
             .classed(`lopa-chart-${deck.deckName} deck-wrapper`, true);
@@ -473,7 +545,7 @@ export default class Lopa {
         this.svg = lopaChart
             .append('svg')
             .attr('width', _own.chartSize.width)
-            .attr('height', _own.chartSize.height);
+            .attr('height', _own.chartSize.height);            
 
         this.svg.call(_own.tool_tip);
         this.drawSeats(deck);
@@ -505,6 +577,10 @@ export default class Lopa {
         const _own = this;
         let seatW = this.seatSize.width;
         let seatH = cls.cabin.seatType === 'small' ? this.seatSize.smHeight : this.seatSize.lgHeight;
+        if (this.orientation && this.orientation === 'vertical') {
+            seatH = this.seatSize.height;
+            seatW = cls.cabin.seatType === 'small' ? this.seatSize.smWidth : this.seatSize.lgWidth;
+        }
         let rectW = seatW - 4;
         let rectH = seatH - 4;
 
@@ -529,9 +605,12 @@ export default class Lopa {
         cls.cabin.seatConfig.split('-').forEach((num, i) => {
             this.cabinClsSeatLtrs[i] = ltrsArr.splice(0, num);
         });
+        if (this.orientation && this.orientation === 'vertical') {
+            this.cabinClsSeatLtrs.reverse();
+        }
         this.alphaScaleLtrs = cls.seatConf;
         this.xAxis(this.currentScalePoint + 5, cls.cabin.cabinClass, lavArr);
-        this.yAxis(cls.seatConf, seatH);
+        this.yAxis(cls.seatConf, seatH, seatW);
 
         const cabinLavCount = this.isLavatoriesAndGalleysExist ? this.laventoriesCabinCount(cls.cabin.startRow, cls.cabin.endRow) : 0;
 
@@ -556,15 +635,22 @@ export default class Lopa {
                 .append('path')
                 .attr('class', d => `default ${d}${col}`)
                 .attr('id', d => `${col}${d}`)
-                .attr('d', _own.roundedPath(-(rectW / 2), -(rectH / 2), rectW, rectH, 7))
+                .attr('d', _own.roundedPath(-(rectW / 2), -(rectH / 2), rectW, rectH))
                 .attr('transform', d => {
+                    const seatSize = this.orientation && this.orientation === 'vertical' ? seatH : seatW;
                     const lavIndex = this.getLaventoriesGalleries(col, lavArr);
-                    _own.previousScalePoint = _own.currentScalePoint + (lavIndex * 20) + ((i + 1) * seatW);
+                    _own.previousScalePoint = _own.currentScalePoint + (lavIndex * 20) + ((i + 1) * seatSize);
                     const cabinHeight = _own.detectCabinHeight(d);
-                    const cabinPositionHeight = this.alterSeatPosition(d);
+                    const cabinPositionHeight = _own.alterSeatPosition(d);
                     const seatLetterIndex = cls.seatConf.findIndex(seat => seat === d);
+                    const innerPadding = _own.detectPadding(d);
+                    if (this.orientation && this.orientation === 'vertical') {
+                        return `translate( 
+                        ${_own.chartSize.width - cabinPositionHeight - cabinHeight - ((seatLetterIndex + 1) * seatW) - innerPadding + cls.topPos},
+                        ${_own.currentScalePoint + (lavIndex * 20) + ((i + 1) * seatH)})`
+                    }
                     return `translate(${_own.currentScalePoint + (lavIndex * 20) + ((i + 1) * seatW)}, 
-                    ${height - cabinPositionHeight - cabinHeight - ((seatLetterIndex + 1) * seatH) - _own.detectPadding(d) + cls.topPos})`
+                        ${height - cabinPositionHeight - cabinHeight - ((seatLetterIndex + 1) * seatH) - innerPadding + cls.topPos})`;
                 })
                 .attr('style', d => {
                     const seatNo = `${col}${d}`;
@@ -597,7 +683,7 @@ export default class Lopa {
                     }
 
                     seatData.forEach(data => {
-                        if (data.seat === `${col}${d}`) {
+                        if (data.seat === `${col}${d}` && data.tooltip) {
                             _own.tool_tip.show(data.tooltip);
                         }
                     });
@@ -608,7 +694,9 @@ export default class Lopa {
                 });
         });
 
-        this.deckNameW = this.deckNameW + d3.select(`.${deckClassname}`).node().getBBox().width;
+        if (this.orientation && this.orientation !== 'vertical') {
+            this.deckNameW = this.deckNameW + d3.select(`.${deckClassname}`).node().getBBox().width;
+        }
         this.currentScalePoint = this.previousScalePoint + this.padding.inner;
     }
 
@@ -619,11 +707,12 @@ export default class Lopa {
         this.clsCabinHeight = 0;
         this.airCraftHeight.push({
             deckName: deck.deckName,
-            height: this.chartSize.height
+            height: this.chartSize.height,
+            width: this.chartSize.width
         });
         this.classConfig.forEach(cls => {
             let cabinConf = {};
-            const seatSize = cls.seatType === 'small' ? this.seatSize.smHeight : this.seatSize.lgHeight;
+            let seatSize = this.getSeatSize(cls.seatType);
             const clsSeatConfig = cls.seatConfig.split('-');
             const col = clsSeatConfig.reduce((tot, val) => tot + val);
             this.clsCabinHeight = col * seatSize;
